@@ -11,9 +11,8 @@
 # Compiler and flags
 # -----------------------------------------------------------------
 FC     = gfortran
-FFLAGS = -O2 
 #FFLAGS = -g -fcheck=all -Wall -O0
-#FFLAGS = -O2
+FFLAGS = -O2
 
 # -----------------------------------------------------------------
 # Optional: use MKL  
