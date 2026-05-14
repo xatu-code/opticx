@@ -390,8 +390,15 @@ end subroutine get_shift_intens_sp
 		        realpart(feps*sigma_w_sp(3,3,2,iw)), &
 		        realpart(feps*sigma_w_sp(3,3,3,iw))
       write(100,*) wp(iw)*27.211385d0,&
-            shift_vector_w(1,1,iw),shift_vector_w(1,2,iw), &
-            shift_vector_w(2,1,iw),shift_vector_w(2,2,iw)
+            shift_vector_w(1,1,iw), &
+            shift_vector_w(1,2,iw), &
+            shift_vector_w(1,3,iw), &
+            shift_vector_w(2,1,iw), &
+            shift_vector_w(2,2,iw), &
+            shift_vector_w(2,3,iw), &
+            shift_vector_w(3,1,iw), &
+            shift_vector_w(3,2,iw), &
+            shift_vector_w(3,3,iw)
     end do
     close(90)
     close(95)
