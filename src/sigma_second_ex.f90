@@ -1,7 +1,7 @@
 module sigma_second_ex
   use constants_math
-  use parser_input_file, &
-  only:e1,e2,eta,nw,response_text
+	use parser_input_file, &
+	only:e1,e2,eta,nw,response_text,broadening_type_text
   use parser_wannier90_tb, &
   only:material_name
   use parser_optics_xatu_dim, &
@@ -136,12 +136,20 @@ module sigma_second_ex
 	  nj2=njp
 	  nj3=njpp    
 		
-      ilorentzian=0
-	  ihuang=0
-	  imine=1 !working gaussian-broadedning shift current
+if (trim(broadening_type_text) == 'gaussian') then
+        imine = 1
+        ilorentzian = 0
+      else if (trim(broadening_type_text) == 'lorentzian') then
+				imine = 0
+				ilorentzian = 1
+			else
+				imine = 1
+				ilorentzian = 0
+			end if
 
+			ihuang=0
 
-      if (imine.eq.1) then
+			if (imine.eq.1) then
 		!with deltas. Working on 07/11/2023
 	    d1=1.0d0/eta2*1.0d0/sqrt(2.0d0*pi)*exp(-0.5d0/(eta2**2)*(omegaq-e_ex(nnp))**2)
 	    d2=1.0d0/eta2*1.0d0/sqrt(2.0d0*pi)*exp(-0.5d0/(eta2**2)*(omegaq+e_ex(nnp))**2)
@@ -279,10 +287,34 @@ module sigma_second_ex
       !d=3.28d0 !thickness in angstrongs for h-BN
       !feps=feps/(d/0.52917721067121d0) 
       feps=(6.623618d-03)*(1.0d+06)*(27.211386**(-2))*(5.291772d-11)*(1.0d+09) !%go from au to (\mu A /V^2)*nm	
-      write(90,*) wp(iw)*27.211385d0,realpart(feps*sigma_w_ex(1,1,1,iw)), &
-		         realpart(feps*sigma_w_ex(1,2,2,iw)), &
-		         realpart(feps*sigma_w_ex(2,1,1,iw)), &
-		  	     realpart(feps*sigma_w_ex(2,2,2,iw)) 	    
+      write(90,*) wp(iw)*27.211385d0,&
+				realpart(feps*sigma_w_ex(1,1,1,iw)), &
+		        realpart(feps*sigma_w_ex(1,1,2,iw)), &
+		        realpart(feps*sigma_w_ex(1,1,3,iw)), &
+		        realpart(feps*sigma_w_ex(1,2,1,iw)), &
+		  	    realpart(feps*sigma_w_ex(1,2,2,iw)), & 
+		  	    realpart(feps*sigma_w_ex(1,2,3,iw)), &
+		        realpart(feps*sigma_w_ex(1,3,1,iw)), &
+		        realpart(feps*sigma_w_ex(1,3,2,iw)), &
+		        realpart(feps*sigma_w_ex(1,3,3,iw)), &
+                realpart(feps*sigma_w_ex(2,1,1,iw)), &
+		        realpart(feps*sigma_w_ex(2,1,2,iw)), &
+		        realpart(feps*sigma_w_ex(2,1,3,iw)), &
+		        realpart(feps*sigma_w_ex(2,2,1,iw)), &
+		  	    realpart(feps*sigma_w_ex(2,2,2,iw)), & 
+		  	    realpart(feps*sigma_w_ex(2,2,3,iw)), &
+		        realpart(feps*sigma_w_ex(2,3,1,iw)), &
+		        realpart(feps*sigma_w_ex(2,3,2,iw)), &
+		        realpart(feps*sigma_w_ex(2,3,3,iw)), &
+                realpart(feps*sigma_w_ex(3,1,1,iw)), &
+		        realpart(feps*sigma_w_ex(3,1,2,iw)), &
+		        realpart(feps*sigma_w_ex(3,1,3,iw)), &
+		        realpart(feps*sigma_w_ex(3,2,1,iw)), &
+		  	    realpart(feps*sigma_w_ex(3,2,2,iw)), & 
+		  	    realpart(feps*sigma_w_ex(3,2,3,iw)), &
+		        realpart(feps*sigma_w_ex(3,3,1,iw)), &
+		        realpart(feps*sigma_w_ex(3,3,2,iw)), &
+		        realpart(feps*sigma_w_ex(3,3,3,iw))
     end do
     close(90)
 

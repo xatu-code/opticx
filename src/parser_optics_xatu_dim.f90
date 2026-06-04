@@ -170,6 +170,7 @@ module parser_optics_xatu_dim
       integer :: nband_ex_aux1,nband_ex_aux2 !auxiliary
       integer :: iexit
       integer :: i,j,naux,npointstotal_sq
+      integer :: hdr1, hdr2, ios
       
       real(8) aux1
       character(len=:), allocatable :: file2open
@@ -240,16 +241,51 @@ module parser_optics_xatu_dim
       !get nk
       file2open=trim(xatu_eigval_filepath_in)
       open(10,file=file2open)
-      read(10,*) npointstotal_sq
-	    read(10,*) naux 
-      close(10)	  
+      ! Try old format: first line npointstotal_sq, second line naux
+      read(10,*,iostat=ios) hdr1
+      if (ios == 0) then
+        read(10,*,iostat=ios) hdr2
+        if (ios == 0) then
+          npointstotal_sq = hdr1
+          naux = hdr2
+        else
+          ! New xatu Result::writeEigenvalues format: first line = exciton basis size (naux)
+          naux = hdr1
+          ! compute npointstotal from nv_ex*nc_ex (number of pair combinations per k)
+          if (nv_ex*nc_ex > 0) then
+            npointstotal = naux / (nv_ex*nc_ex)
+          else
+            npointstotal = 0
+          end if
+          ! derive npointstotal_sq based on ndim
+          if (ndim == 1) then
+            npointstotal_sq = npointstotal
+          else if (ndim == 2) then
+            npointstotal_sq = int(sqrt(dble(npointstotal)) + 0.5d0)
+          else if (ndim == 3) then
+            npointstotal_sq = int((dble(npointstotal))**(1.0d0/3.0d0) + 0.5d0)
+          end if
+        end if
+      else
+        ! Fallback: try older format read without iostat
+        rewind(10)
+        read(10,*) npointstotal_sq
+        read(10,*) naux
+      end if
+      close(10)
       
       !get N_BSE=nv_ex*nc_ex*nk**2 variables
-      if (ndim==1) npointstotal=npointstotal_sq
-      if (ndim==2) npointstotal=npointstotal_sq**2
-      if (ndim==3) npointstotal=npointstotal_sq**3
-	    norb_ex_band=int(naux/npointstotal)
-	    norb_ex=norb_ex_band*npointstotal
+      if (npointstotal == 0) then
+        if (ndim==1) npointstotal=npointstotal_sq
+        if (ndim==2) npointstotal=npointstotal_sq**2
+        if (ndim==3) npointstotal=npointstotal_sq**3
+      end if
+      if (npointstotal > 0) then
+        norb_ex_band = int(naux / npointstotal)
+      else
+        norb_ex_band = 0
+      end if
+      norb_ex = norb_ex_band * npointstotal
 
 	  end subroutine get_exciton_dim
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -282,12 +318,36 @@ module parser_optics_xatu_dim
 
 	    dimension auxr1(2*norb_ex)
       character(len=:), allocatable :: file2open
+      integer :: header1, ios
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!		  
 	    !get energies
       file2open=trim(xatu_eigval_filepath_in)
       open(10,file=file2open) 
-	    read(10,*)
-	    read(10,*) nkaka,(e_ex(j), j=1,norb_ex_cut)
+      ! Try to read the format produced by xatu Result::writeEigenvalues:
+      ! Line 1: exciton basis size (ignored here)
+      ! Line 2: number of eigenvalues (nkaka)
+      ! Next lines: one eigenvalue per line
+      read(10,*,iostat=ios) header1
+      read(10,*,iostat=ios)
+      if (ios == 0) then
+        read(10,*,iostat=ios) nkaka
+        if (ios == 0) then
+          do j=1,norb_ex_cut
+            read(10,*,iostat=ios) e_ex(j)
+            if (ios /= 0) exit
+          end do
+        else
+          ! fallback to older single-line format
+          rewind(10)
+          read(10,*)
+          read(10,*) nkaka,(e_ex(j), j=1,norb_ex_cut)
+        end if
+      else
+        ! fallback to older single-line format
+        rewind(10)
+        read(10,*)
+        read(10,*) nkaka,(e_ex(j), j=1,norb_ex_cut)
+      end if
       close(10)
       
       file2open=trim(xatu_states_filepath_in)
@@ -360,4 +420,3 @@ module parser_optics_xatu_dim
 
 
 end module parser_optics_xatu_dim
-

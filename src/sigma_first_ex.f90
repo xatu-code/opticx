@@ -1,7 +1,7 @@
 module sigma_first_ex
   use constants_math
   use parser_input_file, &
-  only:iflag_xatu,nf,e1,e2,eta,nw
+  only:iflag_xatu,nf,e1,e2,eta,nw,broadening_type_text
   use parser_wannier90_tb, &
   only:material_name,norb
   use parser_optics_xatu_dim, &
@@ -103,12 +103,21 @@ module sigma_first_ex
 	        do njp=1,3
             
             !N integrand
-            skubo_ex_int(nj,njp,nn)=1.0d0/(dble(npointstotal)*vcell) &
+            skubo_ex_int(nj,njp,nn)=pi/(dble(npointstotal)*vcell) &
             *conjg(vme_ex(nj,nn))*vme_ex(njp,nn)/e_ex(nn)   !pick the correct order of operators
             
             !at a given frequency
             !delta function
-            delta_n_ex=pi*1.0d0/eta1*1.0d0/sqrt(2.0d0*pi)*exp(-0.5d0/(eta1**2)*(wp(iw)-e_ex(nn))**2)
+            if (trim(broadening_type_text) == 'gaussian') then
+              delta_n_ex = pi*1.0d0/eta1*1.0d0/sqrt(2.0d0*pi)*&
+                exp(-0.5d0/(eta1**2)*(wp(iw)-e_ex(nn))**2)
+            else if (trim(broadening_type_text) == 'lorentzian') then
+              delta_n_ex = 1.0d0/pi*aimag(1.0d0/(wp(iw)-e_ex(nn)-&
+                complex(0.0d0,eta1)))
+            else
+              delta_n_ex = pi*1.0d0/eta1*1.0d0/sqrt(2.0d0*pi)*&
+                exp(-0.5d0/(eta1**2)*(wp(iw)-e_ex(nn))**2)
+            end if
             !sigma_w
 			      sigma_w_ex(nj,njp,iw)=sigma_w_ex(nj,njp,iw)+skubo_ex_int(nj,njp,nn)*delta_n_ex
           
@@ -136,7 +145,8 @@ module sigma_first_ex
 
     do iw=1,nw
       feps=1.0d0 !use atomic units
-      write(50,*) wp(iw)*27.211385d0,realpart(feps*sigma_w_ex(1,1,iw)), &
+      write(50,*) wp(iw)*27.211385d0, &
+        realpart(feps*sigma_w_ex(1,1,iw)), &
         realpart(feps*sigma_w_ex(1,2,iw)), &
         realpart(feps*sigma_w_ex(1,3,iw)), &
         realpart(feps*sigma_w_ex(2,1,iw)), &
@@ -146,7 +156,8 @@ module sigma_first_ex
         realpart(feps*sigma_w_ex(3,2,iw)), &
         realpart(feps*sigma_w_ex(3,3,iw))
   
-      write(55,*) wp(iw)*27.211385d0,aimag(feps*sigma_w_ex(1,1,iw)), &
+      write(55,*) wp(iw)*27.211385d0, &
+          aimag(feps*sigma_w_ex(1,1,iw)), &
           aimag(feps*sigma_w_ex(1,2,iw)), &
           aimag(feps*sigma_w_ex(1,3,iw)), &
           aimag(feps*sigma_w_ex(2,1,iw)), &

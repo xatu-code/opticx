@@ -17,6 +17,7 @@ module parser_input_file
   public :: get_input_file
   public :: nband_index
   public :: norb_ex_cut
+  public :: broadening_type_text
   public :: read_line_numbers_int !subroutine
 
   character(len=1000) :: material_name_in
@@ -24,6 +25,7 @@ module parser_input_file
   character(len=100) :: iflag_xatu_text
   character(len=100) :: iflag_ome_sp_text
   character(len=100) :: iflag_ome_ex_text
+  character(len=100) :: broadening_type_text
   character(len=1000) :: xatu_eigval_filepath_in
   character(len=1000) :: xatu_states_filepath_in
   character(len=100) :: response_text
@@ -32,96 +34,165 @@ module parser_input_file
   logical :: iflag_ome_sp
   logical :: iflag_ome_ex
 
-  integer :: nk1
   integer :: ndim
   integer :: nf
   integer :: npointstotal_sq
-  integer :: nband_index_aux 
   integer :: norb_ex_cut
-  integer :: j !to read stuff
   integer :: nband_index
   integer :: nw
   real(8) :: e1,e2,eta
 
-  dimension :: nband_index_aux(100) !auxiliary array to save band indeces
   allocatable :: nband_index(:)
 
-  contains 
+  contains
+    function to_lower(str) result(lower_str)
+      implicit none
+      character(len=*), intent(in) :: str
+      character(len=len(str)) :: lower_str
+      integer :: i, ic
+      
+      do i = 1, len(str)
+        ic = iachar(str(i:i))
+        if (ic >= iachar('A') .and. ic <= iachar('Z')) then
+          lower_str(i:i) = achar(ic + 32)
+        else
+          lower_str(i:i) = str(i:i)
+        end if
+      end do
+    end function to_lower
+    
     subroutine get_input_file()
       implicit none
-      allocatable :: narray(:) 
-      integer :: i,narray,num_values
+      integer, allocatable :: narray(:) 
+      integer :: num_values, ios
+      character(len=1000) :: line
+      character(len=100) :: param_name
+      logical :: ndim_found, material_found, xatu_found, bandlist_found
+      logical :: ncells_found, nfermi_found, ome_sp_found, ome_ex_found
+      logical :: response_found, energy_found, exciton_found
       
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       write(*,*) '1. Entering parser_input_file'
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       
+      ! Initialize flags
+      ndim_found = .false.
+      material_found = .false.
+      xatu_found = .false.
+      bandlist_found = .false.
+      ncells_found = .false.
+      nfermi_found = .false.
+      ome_sp_found = .false.
+      ome_ex_found = .false.
+      response_found = .false.
+      energy_found = .false.
+      exciton_found = .false.
+      ! default broadening
+      broadening_type_text = 'gaussian'
+      
       call get_command_argument(1,filename_input)
-      !write(*,*) trim(filename_input)
-      !pause
-      !open(10,file='./bin/'//trim(filename_input)//'')
       open(10,file=adjustl(filename_input))
-      read(10,*) !# Periodic dimensions
-      read(10,*) ndim
-      read(10,*) !# Wannier90_filename
-      read(10,'(A)') material_name_in
-      read(10,*) !# Xatu_interface
-      read(10,*) iflag_xatu_text
-      if (iflag_xatu_text == 'true') then
-        iflag_xatu= .true.
-        !get paths for .eigval and .states files
-        read(10,'(A)') xatu_eigval_filepath_in
-        read(10,'(A)') xatu_states_filepath_in
-        npointstotal_sq=0
-        read(10,*) !# Exciton_cutoff
-        read(10,*) norb_ex_cut
-        read(10,*) !# Nfermi
-        read(10,*) nf
-        read(10,*) !# OME_sp
-        read(10,*) iflag_ome_sp_text
-        read(10,*) !# OME_ex
-        read(10,*) iflag_ome_ex_text    
-        read(10,*) !# Response
-        read(10,*) response_text
-        read(10,*) !# Energy_variables
-        read(10,*) e1,e2,eta,nw
-        close(10)
-      else if (iflag_xatu_text  == 'false') then
-        iflag_xatu= .false.
-        read(10,*) !# Bandlist
-        !reads a line of numbers and stores them in an allocatable array 'narray'
-        call read_line_numbers_int(narray,num_values) 
-        !write(*,*) (narray(j),j=1,num_values)
-        read(10,*) !# Ncells
-        read(10,*) npointstotal_sq
-        read(10,*) !# Nfermi
-        read(10,*) nf
-        read(10,*) !# OME_sp
-        read(10,*) iflag_ome_sp_text
-        read(10,*) !# Response
-        read(10,*) response_text
-        read(10,*) !# Energy_variables
-        read(10,*) e1,e2,eta,nw
-        close(10)
-        !fill the nband_index array after knowing the value of num_values
-        !it will be used in parser_optics_xatu_dim.f90
-        allocate (nband_index(num_values)) 
-        nband_index(:)=narray(:)
-      else
-        write(*,*) 'Error: Invalid value in the input file. Expected "true" or "false".'
-        stop
+      
+      ! Read file sequentially and process parameters based on their labels
+      do
+        read(10,'(A)',iostat=ios) line
+        if (ios /= 0) exit  ! End of file
+        
+        line = adjustl(line)
+        
+        ! Check if this is a comment line (parameter label)
+        if (line(1:1) == '#') then
+          ! Extract parameter name and read corresponding value
+          param_name = adjustl(line(3:))  ! Remove "# " prefix
+          
+          if (index(param_name, 'Periodic dimensions') > 0) then
+            read(10,*) ndim
+            ndim_found = .true.
+            
+          else if (index(param_name, 'Wannier90_filename') > 0) then
+            read(10,'(A)') material_name_in
+            material_found = .true.
+            
+          else if (index(param_name, 'Xatu_interface') > 0) then
+            read(10,*) iflag_xatu_text
+            xatu_found = .true.
+            
+            if (iflag_xatu_text == 'true') then
+              iflag_xatu = .true.
+              ! Read the eigval and states file paths that follow
+              read(10,'(A)') xatu_eigval_filepath_in
+              read(10,'(A)') xatu_states_filepath_in
+            else if (iflag_xatu_text == 'false') then
+              iflag_xatu = .false.
+            else
+              write(*,*) 'Error: Invalid value in Xatu_interface. Expected "true" or "false".'
+              stop
+            end if
+            
+          else if (index(param_name, 'Exciton_cutoff') > 0) then
+            read(10,*) norb_ex_cut
+            exciton_found = .true.
+            
+          else if (index(param_name, 'Bandlist') > 0) then
+            call read_line_numbers_int(narray, num_values)
+            bandlist_found = .true.
+            
+          else if (index(param_name, 'Ncells') > 0) then
+            read(10,*) npointstotal_sq
+            ncells_found = .true.
+            
+          else if (index(param_name, 'Nfermi') > 0) then
+            read(10,*) nf
+            nfermi_found = .true.
+            
+          else if (index(param_name, 'OME_sp') > 0 .or. index(param_name, 'OME_SP') > 0) then
+            read(10,*) iflag_ome_sp_text
+            ome_sp_found = .true.
+            
+          else if (index(param_name, 'OME_ex') > 0 .or. index(param_name, 'OME_EX') > 0) then
+            read(10,*) iflag_ome_ex_text
+            ome_ex_found = .true.
+            
+          else if (index(param_name, 'Response') > 0) then
+            read(10,*) response_text
+            response_found = .true.
+            
+          else if (index(param_name, 'Energy_variables') > 0) then
+            read(10,*) e1, e2, eta, nw
+            energy_found = .true.
+          else if (index(param_name, 'Broadening_type') > 0 .or. index(param_name,'Broadening')>0) then
+            read(10,'(A)') broadening_type_text
+            broadening_type_text = adjustl(broadening_type_text)
+            broadening_type_text = to_lower(broadening_type_text)
+          
+          end if
+        end if
+      end do
+      
+      close(10)
+      
+      ! Handle bandlist case: allocate nband_index if bandlist was found
+      if (bandlist_found) then
+        allocate(nband_index(num_values))
+        nband_index(:) = narray(:)
       end if
       
-      !declare flags from text strings
-      if (iflag_ome_sp_text == 'true') then
-        iflag_ome_sp= .true.
-      else
-        iflag_ome_sp= .false.
+      ! Set npointstotal_sq to 0 if using xatu interface
+      if (iflag_xatu) then
+        npointstotal_sq = 0
       end if
-      if (iflag_ome_ex_text == 'true') then
-        iflag_ome_ex= .true.
+      
+      ! Declare flags from text strings
+      if (iflag_ome_sp_text == 'true') then
+        iflag_ome_sp = .true.
       else
-        iflag_ome_ex= .false.
+        iflag_ome_sp = .false.
+      end if
+      
+      if (iflag_ome_ex_text == 'true') then
+        iflag_ome_ex = .true.
+      else
+        iflag_ome_ex = .false.
       end if
       
       write(*,*) '   Input file has been read'

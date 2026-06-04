@@ -11,7 +11,6 @@
 # Compiler and flags
 # -----------------------------------------------------------------
 FC     = gfortran
-FFLAGS = -O2 
 #FFLAGS = -g -fcheck=all -Wall -O0
 #FFLAGS = -O2
 
