@@ -10,7 +10,7 @@ module sigma_first_sp
   rkxvector,rkyvector,rkzvector !k-vectors only used for testing
   use ome_ex, &
   only:read_ome_sp_linear !routine
-  use omp_lib  ! <-- OpenMP
+  use omp_lib
 
   implicit none
   
@@ -18,7 +18,7 @@ module sigma_first_sp
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine get_sigma_first_sp()
     implicit none
-    integer :: iflag_norder
+    integer :: iflag_norder = 1
     integer :: ibz, j
 
     ! k-mesh arrays
@@ -45,14 +45,10 @@ module sigma_first_sp
     call fill_allocate_sigma_arrays(eta1,nw,wp,sigma_w_sp)
     
     write(*,*) '   Evaluating linear conductivity (sp)...'
-    !write(*,*) '   Using',omp_get_max_threads(),'OpenMP threads'
 
     ! ----------------------------------------------------------------
-    ! Parallelise over k-points (ibz).
     !
-    ! * PRIVATE  : each thread owns its own copy of the scratch arrays
-    !              e_nband_local and vme_nband_local so there is no
-    !              data race when filling them.
+    ! * PRIVATE  : each thread owns its own scratch arrays.
     ! * REDUCTION: sigma_w_sp is accumulated across threads safely.
     ! ----------------------------------------------------------------
     !$OMP PARALLEL DO          &
@@ -62,7 +58,7 @@ module sigma_first_sp
     !$OMP   SCHEDULE(dynamic)
     do ibz=1,npointstotal
       !fill auxiliary arrays (thread-local copies)
-      e_nband_local(:)     = ek(ibz,:)
+      e_nband_local(:)       = ek(ibz,:)
       vme_nband_local(:,:,:) = vme_ex_band(ibz,:,:,:)
       !fill sigma(w) for a given k point
       call get_kubo_intens_sp(nband_ex,npointstotal,vcell, &
@@ -140,36 +136,24 @@ module sigma_first_sp
     close(55)
 
   end subroutine print_sigma_first_sp
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine get_kubo_intens_sp(nband_ex,npointstotal,vcell,e,vme,nw,wp,eta1,sigma_w_sp)
     implicit none
     integer,    intent(in)    :: nw, nband_ex, npointstotal
     integer                   :: iw, nn, nnp, nj, njp
     real(8),    intent(in)    :: e(nband_ex), wp(nw), eta1, vcell
-    complex(8),intent(in)    :: vme(3,nband_ex,nband_ex)
-    complex(8),intent(inout) :: sigma_w_sp(3,3,nw)
+    complex(8), intent(in)    :: vme(3,nband_ex,nband_ex)
+    complex(8), intent(inout) :: sigma_w_sp(3,3,nw)
 
     real(8)    :: fnn, fnnp, factor1
-    complex(8):: delta_nnp, vme_prod
-    complex(8):: sigma_local(3,3,nw)
+    real(8)    :: delta_nnp
+    complex(8) :: vme_prod
+    complex(8) :: sigma_local(3,3,nw)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     sigma_local = (0.0d0, 0.0d0)
 
-    ! ----------------------------------------------------------------
-    ! Parallelise the band-band loop (nn, nnp).  The iw loop is kept
-    ! inside so each (nn,nnp) pair sweeps all frequencies in one shot,
-    ! preserving cache locality on wp and sigma_local.
-    !
-    ! REDUCTION on sigma_local collects partial sums from all threads.
-    ! ----------------------------------------------------------------
-    !$OMP PARALLEL DO                          &
-    !$OMP   DEFAULT(SHARED)                    &
-    !$OMP   PRIVATE(nn, nnp, nj, njp,          &
-    !$OMP           fnn, fnnp, factor1,        &
-    !$OMP           delta_nnp, vme_prod, iw)   &
-    !$OMP   REDUCTION(+:sigma_local)           &
-    !$OMP   SCHEDULE(static)
     do nn=1,nband_ex
       !fermi distribution
       if (nn.le.nv_ex) then
@@ -186,8 +170,8 @@ module sigma_first_sp
           fnnp=0.0d0
         end if
 
-        !DECIDE PREFACTOR WITH OCCUPATION
-        if (abs(fnn-fnnp).lt.0.1d0) then
+        ! added check for degeneracy points in energy to prevent division by zero in the denominators
+        if (abs(fnn-fnnp).lt.0.1d0 .or. abs(e(nn)-e(nnp)).lt.1.0d-6) then
           factor1=0.0d0
         else
           factor1=(fnn-fnnp)/(e(nn)-e(nnp))
@@ -197,7 +181,6 @@ module sigma_first_sp
         if (factor1 == 0.0d0) cycle
 
         do iw=1,nw
-          ! Broadening: gaussian or lorentzian based on parser input
           if (trim(broadening_type_text) == 'gaussian') then
             delta_nnp = -1.0d0/eta1*1.0d0/sqrt(2.0d0*pi)*&
               exp(-0.5d0/(eta1**2)*(wp(iw)-e(nn)+e(nnp))**2)
@@ -220,9 +203,8 @@ module sigma_first_sp
         end do ! iw
       end do   ! nnp
     end do     ! nn
-    !$OMP END PARALLEL DO
 
-    ! Accumulate into the caller's array (already protected by the outer
+    ! Accumulate into the caller's array (protected by the outer
     ! k-point REDUCTION in get_sigma_first_sp)
     sigma_w_sp = sigma_w_sp + sigma_local
 

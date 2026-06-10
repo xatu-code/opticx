@@ -269,7 +269,7 @@ end subroutine get_sigma_shift_sp
                 end if
  
                 if (response_text == 'shift_shiftvector') then
-                  ! Nagaosa shift-vector form (TRS)
+                  ! Nagaosa shift-vector form (10.1103/PhysRevX.10.041041)
                   shift = -(shift_vector_nband(nj, njp,  nnp, nn) - &
                              shift_vector_nband(nj, njpp, nn,  nnp)) * &
                            vme_nband(njpp, nn, nnp) * vme_nband(njp, nnp, nn) / &
@@ -401,7 +401,6 @@ end subroutine get_shift_intens_sp
             shift_vector_w(3,3,iw)
     end do
     close(90)
-    close(95)
     close(100)
   end subroutine print_sigma_second_sp
 end module sigma_second_sp

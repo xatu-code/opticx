@@ -69,7 +69,7 @@ module sigma_first_ex
 
     real*8 :: a1,a2,a3,a4,a5,a6
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	  open(10,file='ome_linear_ex_'//trim(material_name)//'.omeex') 
+    open(10,file='ome_linear_ex_'//trim(material_name)//'.omeex') 
     read(10,*)     
     do nn=1,norb_ex_cut
       read(10,*) nkaka,a1,a2,a3,a4,a5,a6
@@ -119,7 +119,7 @@ module sigma_first_ex
                 exp(-0.5d0/(eta1**2)*(wp(iw)-e_ex(nn))**2)
             end if
             !sigma_w
-			      sigma_w_ex(nj,njp,iw)=sigma_w_ex(nj,njp,iw)+skubo_ex_int(nj,njp,nn)*delta_n_ex
+            sigma_w_ex(nj,njp,iw)=sigma_w_ex(nj,njp,iw)+skubo_ex_int(nj,njp,nn)*delta_n_ex
           
 	        end do
 	      end do

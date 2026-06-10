@@ -127,36 +127,36 @@ module bands
 	  
     open(10,file='bands_'//trim(material_name)//'.dat')	   	  
 	  do ibz=1,npointstotal_path
-      !write(*,*) 'point:',ibz,npointstotal_path        
-      rkx=rkxvector_path(ibz)
-		  rky=rkyvector_path(ibz)
-      rkz=rkzvector_path(ibz)
-	    hkernel=0.0d0
-	    skernel=0.0d0
-	    e=0.0d0
-	    do ialpha=1,norb
-        do ialphap=1,ialpha		  
-          do iRp=1,nR
-            Rx=dble(nRvec(iRp,1))*R(1,1)+dble(nRvec(iRp,2))*R(2,1)
-            Ry=dble(nRvec(iRp,1))*R(1,2)+dble(nRvec(iRp,2))*R(2,2)
-            Rz=0.0d0
-            phase=complex(0.0d0,rkx*Rx+rky*Ry+rkz*Rz)
-            factor=exp(phase)                       
-            hkernel(ialpha,ialphap)=hkernel(ialpha,ialphap)+ &
-            factor*hhop(iRp,ialpha,ialphap)                
-            skernel(ialpha,ialphap)=skernel(ialpha,ialphap)+ &
-            factor*shop(iRp,ialpha,ialphap)          
+        !write(*,*) 'point:',ibz,npointstotal_path        
+        rkx=rkxvector_path(ibz)
+        rky=rkyvector_path(ibz)
+        rkz=rkzvector_path(ibz)
+        hkernel=0.0d0
+        skernel=0.0d0
+        e=0.0d0
+        do ialpha=1,norb
+          do ialphap=1,ialpha		  
+            do iRp=1,nR
+              Rx=dble(nRvec(iRp,1))*R(1,1)+dble(nRvec(iRp,2))*R(2,1)+dble(nRvec(iRp,3))*R(3,1)
+              Ry=dble(nRvec(iRp,1))*R(1,2)+dble(nRvec(iRp,2))*R(2,2)+dble(nRvec(iRp,3))*R(3,2)
+              Rz=dble(nRvec(iRp,1))*R(1,3)+dble(nRvec(iRp,2))*R(2,3)+dble(nRvec(iRp,3))*R(3,3)
+              phase=complex(0.0d0,rkx*Rx+rky*Ry+rkz*Rz)
+              factor=exp(phase)                       
+              hkernel(ialpha,ialphap)=hkernel(ialpha,ialphap)+ &
+              factor*hhop(iRp,ialpha,ialphap)                
+              skernel(ialpha,ialphap)=skernel(ialpha,ialphap)+ &
+              factor*shop(iRp,ialpha,ialphap)          
+            end do
+            hkernel(ialphap,ialpha)=conjg(hkernel(ialpha,ialphap))
+            skernel(ialphap,ialpha)=conjg(skernel(ialpha,ialphap))    
           end do
-		      hkernel(ialphap,ialpha)=conjg(hkernel(ialpha,ialphap))
-          skernel(ialphap,ialpha)=conjg(skernel(ialpha,ialphap))    
-        end do
-	    end do 
-		  call diagoz(norb,e,hkernel)  
+        end do 
+        call diagoz(norb,e,hkernel)  
 
-	    write(10,*) rkx,rky,rkz,rklengthvector_path(ibz),(e(j)*27.211385d0,j=1,norb)
-      !if (rkx.eq.0.0d0 .and. rky.eq.0.0d0) then
-        !write(*,*) 'eigenenergies:',e(60)*27.211385d0,e(61)*27.211385d0,(e(61)-e(60))*27.211385d0
-      !end if
+        write(10,*) rkx,rky,rkz,rklengthvector_path(ibz),(e(j)*27.211385d0,j=1,norb)
+        !if (rkx.eq.0.0d0 .and. rky.eq.0.0d0) then
+          !write(*,*) 'eigenenergies:',e(60)*27.211385d0,e(61)*27.211385d0,(e(61)-e(60))*27.211385d0
+        !end if
 	  end do
     close(10)
 
