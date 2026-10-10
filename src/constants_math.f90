@@ -66,5 +66,48 @@ module constants_math
             
     call zheev(JOBZ, UPLO, n, h, n, w, WORK, LWORK, RWORK, INFO)
   end
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!   NAME:         diagoz_gen
+!   INPUTS:       h: matrix to diagonalize
+!                 s: overlap matrix 
+!                 n: dimension of h and s
+!   OUTPUTS:      w; eigenvalues of h
+!                 h;  gives eigenvectors by columns as output
+!   DESCRIPTION:  this subroutine solves the generalized eigenvalue problem H*v = e*S*v using 
+!                 LAPACK zhegv
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
+  subroutine diagoz_gen(n,w,h,s)
+    implicit none 
+    integer n,INFO,LWORK,ITYPE
+    dimension w(n)
+    dimension RWORK(3*n-2)
+    dimension h(n,n)
+    dimension s(n,n)
+
+    real(8) w
+    real(8) RWORK
+    complex*16 h,s
+    complex*16 WORK(2*n)
+    character*1 JOBZ,UPLO
+
+    ! diagnostic variables
+    integer :: info_tmp, i, j
+    real(8) :: s_eigs(n), rwork_tmp(3*n-2)
+    complex*16 :: s_copy(n,n), work_tmp(2*n)
+
+    ITYPE=1
+    JOBZ='V'
+    UPLO='U'
+    LWORK=2*n
+
+    call zhegv(ITYPE,JOBZ,UPLO,n,h,n,s,n,w,WORK,LWORK,RWORK,INFO)
+    if (INFO /= 0) then
+      write(*,*) 'ERROR: Generalized eigenvalue problem failed. zhegv failed with INFO =', INFO
+      stop
+    end if
+  end
+
 end module constants_math
 

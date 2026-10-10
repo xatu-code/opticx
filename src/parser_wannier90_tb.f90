@@ -1,5 +1,5 @@
 module parser_wannier90_tb
-   use parser_input_file, only:read_line_numbers_int
+   use parser_input_file, only:read_line_numbers_int, iflag_orthonormal
    implicit none
    private
    public :: norb,nR,n1,n2,n3,nRvec
@@ -109,6 +109,14 @@ contains
          read(fp,*)
       end do
 
+      !locate the (0,0,0) element of nRvec
+      do iR=1,nR
+         if (nRvec(iR,1)==0 .and. nRvec(iR,2)==0 .and. nRvec(iR,3)==0) then
+            nRzero=iR
+            exit
+         end if
+      end do
+
       !get rhoppings
       do iR=1,nR
          read(fp,*) !nRvec is already strored
@@ -120,26 +128,28 @@ contains
                rhop_c(3,iR,nkk1,nkk2)=complex(a5,a6)
             end do
          end do
-         if (iR /= nR) read(fp,*) !blank line
+         read(fp,*) !blank line
       end do
+
+      !get shoppings 
+      if (iflag_orthonormal) then
+         shop = 0.0d0
+         do ialpha=1,norb
+            shop(nRzero,ialpha,ialpha)=1.0d0
+         end do
+      else 
+         do iR=1,nR
+            read(fp,*)
+            do ialphap=1,norb
+               do ialpha=1,norb
+                  read(fp,*) nkk1,nkk2,a1,a2
+                  shop(iR,nkk1,nkk2)=complex(a1,a2)
+               end do
+            end do
+            read(fp,*)
+         end do
+      end if
       close(fp)
-      !get orthogonal overlap: this variable is a reminiscent
-      !of the interface with the original crystal interface.
-      !I maintain the overlap matrix though
-
-      !locate the (0,0,0) element of nRvec
-      do iR=1,nR
-         if (nRvec(iR,1)==0 .and. nRvec(iR,2)==0 .and. nRvec(iR,3)==0) then
-            nRzero=iR
-            exit
-         end if
-      end do
-      !wannier functions are orthonormal
-      shop=0.0d0
-      do ialpha=1,norb
-         shop(nRzero,ialpha,ialpha)=1.0d0
-      end do
-
 
       !APPLY BIAS BY HAND
       !do iR=1,nR

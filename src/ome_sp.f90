@@ -1,5 +1,6 @@
 module ome_sp
    use constants_math
+   use parser_input_file, only:iflag_orthonormal
    use parser_wannier90_tb, &
       only:material_name,nR,nRvec,norb,R,shop,hhop,rhop_c
    use parser_optics_xatu_dim, &
@@ -669,10 +670,9 @@ contains
                end do
             end do
             !complex conjugate
+            hkernel(ialphap,ialpha)=conjg(hkernel(ialpha,ialphap))
+            skernel(ialphap,ialpha)=conjg(skernel(ialpha,ialphap))
             do nj=1,3
-               hkernel(ialphap,ialpha)=conjg(hkernel(ialpha,ialphap))
-               skernel(ialphap,ialpha)=conjg(skernel(ialpha,ialphap))
-               
                sderkernel(nj,ialphap,ialpha)=conjg(sderkernel(nj,ialpha,ialphap))
                hderkernel(nj,ialphap,ialpha)=conjg(hderkernel(nj,ialpha,ialphap))
                
@@ -699,6 +699,7 @@ contains
       integer :: i,j,ii,jj,nn,nnp
  
       dimension skernel(norb,norb)
+      dimension s_work(norb,norb)
       dimension hkernel(norb,norb)
       dimension sderkernel(3,norb,norb)
       dimension hderkernel(3,norb,norb)
@@ -711,15 +712,21 @@ contains
       dimension vme(3,norb,norb)
  
       real*8 e
-      complex*16 skernel,sderkernel,hkernel,hderkernel,akernel
+      complex*16 skernel,sderkernel,hkernel,hderkernel,akernel,s_work
       complex*16 hk_ev,vjseudoa,vjseudob,vme
       complex*16 amu,amup,aux1,factor
  
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !diagonalization
       e=0.0d0
-      call diagoz(norb,e,hkernel)
-      hk_ev(:,:)=hkernel(:,:)
+      if (iflag_orthonormal) then
+         call diagoz(norb,e,hkernel)
+         hk_ev(:,:)=hkernel(:,:)
+      else if (.not. iflag_orthonormal) then
+         s_work(:,:) = skernel(:,:)
+         call diagoz_gen(norb,e,hkernel,s_work)
+         hk_ev(:,:)=hkernel(:,:)
+      end if
       call phase_eigvec_nk(norb,hk_ev)
       vme=0.0d0
       vjseudoa=0.0d0

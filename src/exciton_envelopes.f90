@@ -758,9 +758,9 @@ subroutine get_k_kc(G,xp,yp,zp,xc,yc,zc,xp_bz,yp_bz,zp_bz,xc_bz,yc_bz,zc_bz)
 			yp_bz=xc_bz*G(1,2)+yc_bz*G(2,2)
 			zp_bz=0.0d0
 		elseif ( active_x .and. active_z ) then
-			xc=(xp*G(3,3)-G(3,1)*yp)/(G(1,1)*G(3,3)-G(3,1)*G(1,3))
+			xc=(xp*G(3,3)-G(3,1)*zp)/(G(1,1)*G(3,3)-G(3,1)*G(1,3))
 			yc=0.0d0
-			zc=(G(1,1)*yp-xp*G(1,3))/(G(1,1)*G(3,3)-G(3,1)*G(1,3))
+			zc=(G(1,1)*zp-xp*G(1,3))/(G(1,1)*G(3,3)-G(3,1)*G(1,3))
 			
 			xc_bz=xc-dble(int(xc/0.5d0))
 			yc_bz=0.0d0

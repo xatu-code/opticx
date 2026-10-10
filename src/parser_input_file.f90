@@ -19,6 +19,8 @@ module parser_input_file
   public :: norb_ex_cut
   public :: broadening_type_text
   public :: read_line_numbers_int !subroutine
+  public :: iflag_orthonormal_text
+  public :: iflag_orthonormal
 
   character(len=1000) :: material_name_in
   character(len=100) :: filename_input
@@ -29,10 +31,12 @@ module parser_input_file
   character(len=1000) :: xatu_eigval_filepath_in
   character(len=1000) :: xatu_states_filepath_in
   character(len=100) :: response_text
+  character(len=100) :: iflag_orthonormal_text
 
   logical :: iflag_xatu
   logical :: iflag_ome_sp
   logical :: iflag_ome_ex
+  logical :: iflag_orthonormal
 
   integer :: ndim
   integer :: nf
@@ -69,7 +73,7 @@ module parser_input_file
       character(len=100) :: param_name
       logical :: ndim_found, material_found, xatu_found, bandlist_found
       logical :: ncells_found, nfermi_found, ome_sp_found, ome_ex_found
-      logical :: response_found, energy_found, exciton_found
+      logical :: response_found, energy_found, exciton_found, iflag_orthonormal_found
       
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       write(*,*) '1. Entering parser_input_file'
@@ -87,6 +91,7 @@ module parser_input_file
       response_found = .false.
       energy_found = .false.
       exciton_found = .false.
+      iflag_orthonormal_found = .false.
       ! default broadening
       broadening_type_text = 'gaussian'
       
@@ -148,6 +153,10 @@ module parser_input_file
           else if (index(param_name, 'OME_sp') > 0 .or. index(param_name, 'OME_SP') > 0) then
             read(10,*) iflag_ome_sp_text
             ome_sp_found = .true.
+
+          else if (index(param_name, 'Orthonormal') > 0) then
+            read(10,*) iflag_orthonormal_text
+            iflag_orthonormal_found = .true. 
             
           else if (index(param_name, 'OME_ex') > 0 .or. index(param_name, 'OME_EX') > 0) then
             read(10,*) iflag_ome_ex_text
@@ -193,6 +202,17 @@ module parser_input_file
         iflag_ome_ex = .true.
       else
         iflag_ome_ex = .false.
+      end if
+
+      if (iflag_orthonormal_found .and. iflag_orthonormal_text == 'false') then
+        iflag_orthonormal = .false.
+      else if (iflag_orthonormal_found .and. iflag_orthonormal_text == 'true') then
+        iflag_orthonormal = .true.
+      else if (iflag_orthonormal_found) then
+              write(*,*) 'ERROR: Invalid value in Orthonormal. Expected "true" or "false".'
+              stop 
+      else if (.not. iflag_orthonormal_found) then
+        iflag_orthonormal = .true.
       end if
       
       write(*,*) '   Input file has been read'
